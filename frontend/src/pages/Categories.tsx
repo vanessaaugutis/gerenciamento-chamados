@@ -1,23 +1,41 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { createCategory, deleteCategory, listCategories, updateCategory, type Category } from '../services/categories'
+import {
+  createCategory,
+  deleteCategory,
+  listCategories,
+  updateCategory,
+  type Category,
+} from '../services/categories'
 import Modal from '../components/Modal'
+import Button from '../components/Button'
+import Input from '../components/Input'
+import FormField from '../components/FormField'
+import Message from '../components/Message'
+import PageCard from '../components/PageCard'
+import ConfirmModal from '../components/ConfirmModal'
+import ToastContainer from '../components/ToastContainer'
+import { useToast } from '../hooks/useToast'
 
 function CategoriesPage() {
+  const { toasts, addToast, removeToast } = useToast()
+
   const [categories, setCategories] = useState<Category[]>([])
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
   const [showModal, setShowModal] = useState(false)
+
+  const [confirmVisible, setConfirmVisible] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   const loadCategories = async () => {
     try {
       const data = await listCategories()
       setCategories(data)
     } catch {
-      setMessage('Não foi possível carregar as categorias.')
+      addToast('Não foi possível carregar as categorias.', 'error')
     }
   }
 
@@ -29,32 +47,33 @@ function CategoriesPage() {
     setName('')
     setDescription('')
     setEditingId(null)
+    setFormError('')
     setShowModal(false)
   }
 
-  const handleSubmit = async (event: any) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!name.trim()) {
-      setMessage('Informe o nome da categoria.')
+      setFormError('Informe o nome da categoria.')
       return
     }
 
     setLoading(true)
-    setMessage('')
+    setFormError('')
 
     try {
       if (editingId) {
         await updateCategory(editingId, { name: name.trim(), description: description.trim() || undefined })
-        setMessage('Categoria atualizada com sucesso.')
+        addToast('Categoria atualizada com sucesso.')
       } else {
         await createCategory({ name: name.trim(), description: description.trim() || undefined })
-        setMessage('Categoria cadastrada com sucesso.')
+        addToast('Categoria cadastrada com sucesso.')
       }
 
       await loadCategories()
       resetForm()
     } catch {
-      setMessage('Falha ao salvar a categoria.')
+      setFormError('Falha ao salvar a categoria.')
     } finally {
       setLoading(false)
     }
@@ -67,87 +86,120 @@ function CategoriesPage() {
     setShowModal(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Deseja excluir esta categoria?')) {
-      return
-    }
+  const handleDeleteRequest = (id: number) => {
+    setPendingDeleteId(id)
+    setConfirmVisible(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (pendingDeleteId === null) return
+    setConfirmVisible(false)
 
     try {
-      await deleteCategory(id)
+      await deleteCategory(pendingDeleteId)
       await loadCategories()
-      if (editingId === id) {
-        resetForm()
-      }
-      setMessage('Categoria excluída com sucesso.')
+      if (editingId === pendingDeleteId) resetForm()
+      addToast('Categoria excluída com sucesso.')
     } catch {
-      setMessage('Falha ao excluir a categoria.')
+      addToast('Falha ao excluir a categoria.', 'error')
+    } finally {
+      setPendingDeleteId(null)
     }
   }
 
+  const handleDeleteCancel = () => {
+    setConfirmVisible(false)
+    setPendingDeleteId(null)
+  }
+
   return (
-    <div className="page-card" style={{ width: 'min(100%, 720px)' }}>
-      <h1>Categorias</h1>
-      <p>Cadastre, edite ou remova categorias para os chamados.</p>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button type="button" onClick={() => setShowModal(true)}>
-          Nova categoria
-        </button>
-      </div>
+    <>
+      <PageCard maxWidth={1100}>
+        <div className="page-header">
+          <h1>Categorias</h1>
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            Nova categoria
+          </Button>
+        </div>
 
-      <Modal visible={showModal} title={editingId ? 'Editar categoria' : 'Nova categoria'} onClose={() => setShowModal(false)}>
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            Nome
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Suporte" />
-          </label>
+        <Modal
+          visible={showModal}
+          title={editingId ? 'Editar categoria' : 'Nova categoria'}
+          onClose={resetForm}
+        >
+          <form onSubmit={handleSubmit} className="auth-form">
+            <FormField label="Nome" required>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex.: Suporte"
+              />
+            </FormField>
 
-          <label>
-            Descrição
-            <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Descreva a categoria" />
-          </label>
+            <FormField label="Descrição">
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descreva a categoria"
+              />
+            </FormField>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : editingId ? 'Atualizar categoria' : 'Cadastrar categoria'}
-            </button>
-            {editingId ? (
-              <button type="button" onClick={resetForm} style={{ background: '#64748b', marginTop: 0 }}>
-                Cancelar edição
-              </button>
-            ) : null}
-          </div>
-        </form>
-      </Modal>
+            <Message text={formError} type="error" />
 
-      {message ? <p style={{ color: '#2563eb', marginTop: 12 }}>{message}</p> : null}
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? 'Salvando...' : editingId ? 'Atualizar categoria' : 'Cadastrar categoria'}
+              </Button>
+              {editingId ? (
+                <Button type="button" variant="cancel" onClick={resetForm}>
+                  Cancelar edição
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </Modal>
 
-      <ul className="list-card">
-        {categories.length === 0 ? (
-          <li>Nenhuma categoria cadastrada ainda.</li>
-        ) : (
-          categories.map((category) => (
-            <li key={category.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <div>
-                <strong>{category.name}</strong>
-                {category.description ? <div style={{ color: '#64748b' }}>{category.description}</div> : null}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => handleEdit(category)} style={{ background: '#f59e0b', padding: '8px 10px' }}>
-                  Editar
-                </button>
-                <button type="button" onClick={() => handleDelete(category.id)} style={{ background: '#ef4444', padding: '8px 10px' }}>
-                  Excluir
-                </button>
-              </div>
-            </li>
-          ))
-        )}
-      </ul>
+        <ul className="list-card">
+          {categories.length === 0 ? (
+            <li>Nenhuma categoria cadastrada ainda.</li>
+          ) : (
+            categories.map((category) => (
+              <li
+                key={category.id}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}
+              >
+                <div>
+                  <strong>{category.name}</strong>
+                  {category.description ? (
+                    <div style={{ color: '#64748b' }}>{category.description}</div>
+                  ) : null}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button variant="warning" size="sm" onClick={() => handleEdit(category)}>
+                    Editar
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteRequest(category.id)}>
+                    Excluir
+                  </Button>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      </PageCard>
 
-      <p className="page-link">
-        <Link to="/dashboard">Voltar ao dashboard</Link>
-      </p>
-    </div>
+      <ConfirmModal
+        visible={confirmVisible}
+        message="Deseja excluir esta categoria? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={handleDeleteCancel}
+      />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </>
   )
 }
 

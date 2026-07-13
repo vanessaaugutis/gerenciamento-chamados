@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getDashboardSummary, type DashboardSummary } from '../services/dashboard'
+import PageCard from '../components/PageCard'
+import TicketsChart from '../components/TicketsChart'
 
 function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -11,7 +12,7 @@ function DashboardPage() {
         const data = await getDashboardSummary()
         setSummary(data)
       } catch {
-        setSummary({ total: 0, open: 0, inProgress: 0, finished: 0, overdue: 0 })
+        setSummary({ total: 0, open: 0, inProgress: 0, finished: 0, overdue: 0, byPriority: { baixa: 0, media: 0, alta: 0, critica: 0 } })
       }
     }
 
@@ -19,7 +20,7 @@ function DashboardPage() {
   }, [])
 
   return (
-    <div className="page-card">
+    <PageCard maxWidth={1100}>
       <h1>Dashboard</h1>
       <p>Visão geral dos chamados e status do sistema.</p>
 
@@ -34,22 +35,20 @@ function DashboardPage() {
         </div>
         <div className="stat-card">
           <strong>{summary?.inProgress ?? 0}</strong>
-          <span>Chamados Em Atendimento</span>
+          <span>Em Atendimento</span>
         </div>
         <div className="stat-card">
           <strong>{summary?.finished ?? 0}</strong>
-          <span>Chamados Finalizados</span>
+          <span>Finalizados</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card--danger">
           <strong>{summary?.overdue ?? 0}</strong>
-          <span>Chamados Atrasados</span>
+          <span>Atrasados</span>
         </div>
       </div>
 
-      <p className="page-link">
-        <Link to="/categories">Ver categorias</Link>
-      </p>
-    </div>
+      {summary !== null && <TicketsChart summary={summary} />}
+    </PageCard>
   )
 }
 

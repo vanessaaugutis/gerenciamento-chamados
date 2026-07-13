@@ -1,3 +1,5 @@
+import { authHeaders } from './auth';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Ticket = {
@@ -52,6 +54,15 @@ export type TicketListResponse = {
   totalPages: number;
 };
 
+async function readErrorMessage(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    if (typeof data?.message === 'string') return data.message;
+    if (Array.isArray(data?.message)) return data.message.join(', ');
+  } catch {}
+  return response.statusText || 'Erro inesperado';
+}
+
 export async function listTickets(params: TicketListParams = {}): Promise<TicketListResponse> {
   const query = new URLSearchParams();
 
@@ -61,7 +72,9 @@ export async function listTickets(params: TicketListParams = {}): Promise<Ticket
     }
   });
 
-  const response = await fetch(`${API_URL}/tickets?${query.toString()}`);
+  const response = await fetch(`${API_URL}/tickets?${query.toString()}`, {
+    headers: authHeaders(),
+  });
   if (!response.ok) {
     throw new Error('Erro ao listar chamados');
   }
@@ -71,12 +84,12 @@ export async function listTickets(params: TicketListParams = {}): Promise<Ticket
 export async function createTicket(payload: Record<string, unknown>): Promise<Ticket> {
   const response = await fetch(`${API_URL}/tickets`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    throw new Error('Erro ao criar chamado');
+    throw new Error(await readErrorMessage(response));
   }
 
   return response.json();
@@ -85,12 +98,12 @@ export async function createTicket(payload: Record<string, unknown>): Promise<Ti
 export async function updateTicket(id: number, payload: Record<string, unknown>): Promise<Ticket> {
   const response = await fetch(`${API_URL}/tickets/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    throw new Error('Erro ao atualizar chamado');
+    throw new Error(await readErrorMessage(response));
   }
 
   return response.json();
@@ -99,30 +112,33 @@ export async function updateTicket(id: number, payload: Record<string, unknown>)
 export async function deleteTicket(id: number): Promise<void> {
   const response = await fetch(`${API_URL}/tickets/${id}`, {
     method: 'DELETE',
+    headers: authHeaders(),
   });
 
   if (!response.ok) {
-    throw new Error('Erro ao excluir chamado');
+    throw new Error(await readErrorMessage(response));
   }
 }
 
 export async function getTicketDetails(id: number): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/tickets/${id}`);
+  const response = await fetch(`${API_URL}/tickets/${id}`, {
+    headers: authHeaders(),
+  });
   if (!response.ok) {
     throw new Error('Erro ao buscar detalhes do chamado');
   }
   return response.json();
 }
 
-export async function createComment(ticketId: number, payload: { text: string; userId?: number }): Promise<Comment> {
+export async function createComment(ticketId: number, payload: { text: string }): Promise<Comment> {
   const response = await fetch(`${API_URL}/tickets/${ticketId}/comments`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    throw new Error('Erro ao adicionar comentário');
+    throw new Error(await readErrorMessage(response));
   }
 
   return response.json();

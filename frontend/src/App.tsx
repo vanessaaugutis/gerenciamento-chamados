@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
@@ -9,27 +10,72 @@ import { clearToken, getToken } from './services/auth'
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   const hideNav = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register'
   const isAuthenticated = Boolean(getToken())
 
   const handleLogout = () => {
     clearToken()
-    navigate('/login')
+    setSidebarOpen(false)
+    navigate('/login', { state: { logoutMessage: 'Usuário deslogado com sucesso!' } })
   }
+
+  const closeSidebar = () => setSidebarOpen(false)
 
   return (
     <div className="app-shell">
       {!hideNav && isAuthenticated && (
-        <nav className="top-nav">
-          <div className="nav-links">
-            <NavLink to="/dashboard">Dashboard</NavLink>
-            <NavLink to="/categories">Categorias</NavLink>
-            <NavLink to="/tickets">Chamados</NavLink>
-          </div>
-          <button type="button" className="logout-button" onClick={handleLogout}>
-            Deslogar
-          </button>
-        </nav>
+        <>
+          <nav className="top-nav">
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Abrir menu"
+            >
+              <span /><span /><span />
+            </button>
+
+            <div className="nav-links">
+              <NavLink to="/dashboard">Dashboard</NavLink>
+              <NavLink to="/tickets">Chamados</NavLink>
+              <NavLink to="/categories">Categorias</NavLink>
+            </div>
+
+            <button type="button" className="logout-button" onClick={handleLogout}>
+              Deslogar
+            </button>
+          </nav>
+
+          {sidebarOpen && (
+            <div className="sidebar-overlay" onClick={closeSidebar} aria-hidden="true" />
+          )}
+
+          <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}>
+            <div className="sidebar-header">
+              <span className="sidebar-title">Menu</span>
+              <button
+                type="button"
+                className="sidebar-close-btn"
+                onClick={closeSidebar}
+                aria-label="Fechar menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            <nav className="sidebar-nav">
+              <NavLink to="/dashboard" onClick={closeSidebar}>Dashboard</NavLink>
+              <NavLink to="/tickets" onClick={closeSidebar}>Chamados</NavLink>
+              <NavLink to="/categories" onClick={closeSidebar}>Categorias</NavLink>
+            </nav>
+
+            <button type="button" className="logout-button sidebar-logout" onClick={handleLogout}>
+              Deslogar
+            </button>
+          </aside>
+        </>
       )}
 
       <main className="page-container">

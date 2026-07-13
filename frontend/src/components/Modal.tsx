@@ -1,4 +1,5 @@
 import React from 'react'
+import { FiX } from 'react-icons/fi'
 
 interface ModalProps {
   visible: boolean
@@ -11,14 +12,17 @@ export default function Modal({ visible, title, onClose, children }: ModalProps)
   if (!visible) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ background: 'white', padding: 20, borderRadius: 8, width: 'min(100%, 720px)', maxHeight: '90vh', overflow: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 10px' }}>Fechar</button>
+    <div className="modal-overlay">
+      <div className="modal-card">
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Fechar">
+            <FiX size={20} />
+          </button>
         </div>
-
-        {children}
+        <div className="modal-body">
+          {children}
+        </div>
       </div>
     </div>
   )

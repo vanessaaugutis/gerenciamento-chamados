@@ -10,6 +10,8 @@ import { Comment } from '../entities/CommentEntity';
 import { History } from '../entities/HistoryEntity';
 import { Ticket, TicketPriority, TicketStatus } from '../entities/TicketEntity';
 import { User } from '../entities/UserEntity';
+import { CreateTicketDto } from './dto/create-ticket.dto';
+import { UpdateTicketDto } from './dto/update-ticket.dto';
 
 export interface TicketListResponse {
   items: Ticket[];
@@ -18,6 +20,16 @@ export interface TicketListResponse {
   limit: number;
   totalPages: number;
 }
+
+interface CreateTicketData extends CreateTicketDto {
+  userId?: number;
+}
+
+interface UpdateTicketData extends UpdateTicketDto {
+  userId?: number;
+}
+
+type PrepareTicketData = CreateTicketData | UpdateTicketData;
 
 @Injectable()
 export class TicketsService {
@@ -34,14 +46,26 @@ export class TicketsService {
     private readonly historyRepository: Repository<History>,
   ) {}
 
-  async create(data: any): Promise<Ticket> {
+  async create(data: CreateTicketData): Promise<Ticket> {
+    if (!data.subject?.trim()) {
+      throw new BadRequestException('O assunto do chamado é obrigatório.');
+    }
+
+    if (data.dueDate) {
+      const due = new Date(data.dueDate);
+      due.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (due < today) {
+        throw new BadRequestException(
+          'O prazo de atendimento não pode ser inferior à data atual.',
+        );
+      }
+    }
+
     const ticket = await this.prepareTicket(data);
     const savedTicket = await this.ticketRepository.save(ticket);
-    await this.logHistory(
-      savedTicket,
-      data.userId ?? data.createdByUserId,
-      'Chamado criado',
-    );
+    await this.logHistory(savedTicket, data.userId, 'Chamado criado');
     return this.findOne(savedTicket.id);
   }
 
@@ -149,26 +173,68 @@ export class TicketsService {
     return ticket;
   }
 
-  async update(id: number, data: any): Promise<Ticket> {
+  async update(id: number, data: UpdateTicketData): Promise<Ticket> {
     const currentTicket = await this.findOne(id);
-    const prepared = await this.prepareTicket(
-      { ...currentTicket, ...data },
-      currentTicket.id,
-    );
+
+    if (data.dueDate) {
+      const due = new Date(data.dueDate);
+      due.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (due < today) {
+        throw new BadRequestException(
+          'O prazo de atendimento não pode ser inferior à data atual.',
+        );
+      }
+    }
+
+    const nextStatus = data.status
+      ? this.normalizeStatus(data.status)
+      : undefined;
+    if (nextStatus === TicketStatus.FINALIZADO) {
+      const commentCount = await this.commentRepository.count({
+        where: { ticket: { id } },
+      });
+      if (commentCount === 0) {
+        throw new BadRequestException(
+          'Um chamado só pode ser finalizado após registrar pelo menos um comentário com a solução aplicada.',
+        );
+      }
+    }
+
+    const mergedData: UpdateTicketData = {
+      subject: data.subject ?? currentTicket.subject,
+      description: data.description ?? currentTicket.description,
+      priority: data.priority ?? currentTicket.priority,
+      status: data.status ?? currentTicket.status,
+      dueDate:
+        data.dueDate ??
+        (currentTicket.dueDate ? String(currentTicket.dueDate) : undefined),
+      categoryId: data.categoryId ?? currentTicket.category?.id,
+      requesterId: data.requesterId ?? currentTicket.requester?.id,
+      responsibleId: data.responsibleId ?? currentTicket.responsible?.id,
+      userId: data.userId,
+    };
+
+    const prepared = await this.prepareTicket(mergedData, currentTicket.id);
     const savedTicket = await this.ticketRepository.save(prepared);
     const historyEntry = await this.buildHistoryChange(currentTicket, data);
     if (historyEntry) {
-      await this.logHistory(
-        savedTicket,
-        data.userId ?? data.updatedByUserId,
-        historyEntry,
-      );
+      await this.logHistory(savedTicket, data.userId, historyEntry);
     }
     return this.findOne(savedTicket.id);
   }
 
   async remove(id: number): Promise<void> {
     const ticket = await this.findOne(id);
+
+    // Rule: finalized tickets cannot be deleted
+    if (ticket.status === TicketStatus.FINALIZADO) {
+      throw new BadRequestException(
+        'Chamados finalizados não podem ser excluídos.',
+      );
+    }
+
     await this.ticketRepository.remove(ticket);
   }
 
@@ -217,6 +283,7 @@ export class TicketsService {
     inProgress: number;
     finished: number;
     overdue: number;
+    byPriority: { baixa: number; media: number; alta: number; critica: number };
   }> {
     const tickets = await this.ticketRepository.find();
     const today = new Date();
@@ -235,11 +302,18 @@ export class TicketsService {
       if (!ticket.dueDate || ticket.status === TicketStatus.FINALIZADO) {
         return false;
       }
-
       const dueDate = new Date(ticket.dueDate);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     }).length;
+
+    const byPriority = {
+      baixa: tickets.filter((t) => t.priority === TicketPriority.BAIXA).length,
+      media: tickets.filter((t) => t.priority === TicketPriority.MEDIA).length,
+      alta: tickets.filter((t) => t.priority === TicketPriority.ALTA).length,
+      critica: tickets.filter((t) => t.priority === TicketPriority.CRITICA)
+        .length,
+    };
 
     return {
       total: tickets.length,
@@ -247,13 +321,17 @@ export class TicketsService {
       inProgress,
       finished,
       overdue,
+      byPriority,
     };
   }
 
-  private async prepareTicket(data: any, existingId?: number): Promise<Ticket> {
-    const categoryId = data.categoryId ?? data.category?.id;
-    const requesterId = data.requesterId ?? data.requester?.id;
-    const responsibleId = data.responsibleId ?? data.responsible?.id;
+  private async prepareTicket(
+    data: PrepareTicketData,
+    existingId?: number,
+  ): Promise<Ticket> {
+    const categoryId = data.categoryId;
+    const requesterId = data.requesterId;
+    const responsibleId = data.responsibleId;
 
     const ticket = this.ticketRepository.create({
       ...data,
@@ -262,8 +340,11 @@ export class TicketsService {
       priority: this.normalizePriority(data.priority),
       status: this.normalizeStatus(data.status),
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-      createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
     }) as unknown as Ticket;
+
+    if (existingId) {
+      ticket.id = existingId;
+    }
 
     if (categoryId) {
       const category = await this.categoryRepository.findOne({
@@ -293,7 +374,9 @@ export class TicketsService {
     }
 
     if (!existingId && !ticket.requester) {
-      const requester = await this.userRepository.findOne({ where: { id: 1 } });
+      const requester = await this.userRepository.findOne({
+        where: { id: Number(data.userId ?? 1) },
+      });
       if (requester) {
         ticket.requester = requester;
       }
@@ -303,7 +386,10 @@ export class TicketsService {
   }
 
   private async getUserById(userId?: number): Promise<User> {
-    const id = Number(userId ?? 1);
+    const id = Number(userId);
+    if (!id) {
+      throw new BadRequestException('Usuário autenticado não identificado.');
+    }
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`Usuário com id ${id} não encontrado`);
@@ -332,7 +418,7 @@ export class TicketsService {
 
   private async buildHistoryChange(
     previous: Ticket,
-    data: any,
+    data: UpdateTicketData,
   ): Promise<string | null> {
     const changes: string[] = [];
 
@@ -352,7 +438,7 @@ export class TicketsService {
       changes.push(`Status alterado: ${previous.status} → ${nextStatus}`);
     }
 
-    const nextCategoryId = data.categoryId ?? data.category?.id;
+    const nextCategoryId = data.categoryId;
     if (nextCategoryId && previous.category?.id !== Number(nextCategoryId)) {
       const category = await this.categoryRepository.findOne({
         where: { id: Number(nextCategoryId) },
@@ -362,7 +448,7 @@ export class TicketsService {
       changes.push(`Categoria alterada: ${currentName} → ${nextName}`);
     }
 
-    const nextResponsibleId = data.responsibleId ?? data.responsible?.id;
+    const nextResponsibleId = data.responsibleId;
     if (
       nextResponsibleId &&
       previous.responsible?.id !== Number(nextResponsibleId)

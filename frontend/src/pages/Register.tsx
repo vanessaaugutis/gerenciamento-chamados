@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { registerUser, saveToken, loginUser } from '../services/auth'
+import Button from '../components/Button'
+import FormField from '../components/FormField'
+import Input from '../components/Input'
+import Message from '../components/Message'
+import PageCard from '../components/PageCard'
+import { loginUser, registerUser, saveToken } from '../services/auth'
 
 function RegisterPage() {
   const navigate = useNavigate()
@@ -29,34 +34,49 @@ function RegisterPage() {
   }
 
   return (
-    <div className="page-card">
-        <h1>CRIAR CONTA</h1>
+    <PageCard>
+      <h1>CRIAR CONTA</h1>
       <p>Cadastre-se para começar a gerenciar chamados.</p>
 
       <form className="auth-form" onSubmit={handleSubmit}>
-        <label>
-          Nome
-          <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="Seu nome" />
-        </label>
+        <FormField label="Nome" required>
+          <Input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Seu nome"
+          />
+        </FormField>
 
-        <label>
-          E-mail
-          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="seu@email.com" />
-        </label>
+        <FormField label="E-mail" required>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+          />
+        </FormField>
 
-        <label>
-          Senha
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
-        </label>
+        <FormField label="Senha" required>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="********"
+          />
+        </FormField>
 
-        {error ? <p style={{ color: '#ef4444', margin: 0 }}>{error}</p> : null}
-        <button type="submit">Registrar</button>
+        {error ? <Message text={error} type="error" /> : null}
+
+        <Button type="submit" variant="primary" style={{ width: '100%' }}>
+          Registrar
+        </Button>
       </form>
 
       <p className="page-link">
         Já tem conta? <Link to="/login">Fazer login</Link>
       </p>
-    </div>
+    </PageCard>
   )
 }
 

@@ -62,6 +62,11 @@ export class UsersService {
     };
   }
 
+  async findAll(): Promise<Pick<User, 'id' | 'name' | 'email'>[]> {
+    const users = await this.usersRepository.find({ order: { name: 'ASC' } });
+    return users.map(({ id, name, email }) => ({ id, name, email }));
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
   }
