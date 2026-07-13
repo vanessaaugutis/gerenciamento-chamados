@@ -60,9 +60,9 @@ export class Ticket {
   @ManyToOne(() => User, (user) => user.requestedTickets, { eager: true })
   requester!: User;
 
-  @OneToMany(() => Comment, (comment) => comment.ticket)
+  @OneToMany(() => Comment, (comment: Comment) => comment.ticket)
   comments!: Comment[];
 
-  @OneToMany(() => History, (history) => history.ticket)
+  @OneToMany(() => History, (history: History) => history.ticket)
   histories!: History[];
 }
