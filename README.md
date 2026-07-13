@@ -61,7 +61,7 @@ CREATE DATABASE gerenciamento_chamados;
 ```
 
 ### 2. Definir variáveis de ambiente
-No backend, configure as variáveis de ambiente abaixo. Você pode usar um arquivo `.env` ou exportar diretamente no terminal.
+No backend, configure as variáveis de ambiente abaixo. Você pode usar um arquivo `.env` copiando o .env.example ou exportar diretamente no terminal.
 
 ```env
 DB_HOST=localhost

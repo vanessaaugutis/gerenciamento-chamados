@@ -20,10 +20,10 @@ interface TicketsChartProps {
 const STATUS_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#22c55e', '#ef4444']
 
 const PRIORITY_COLORS: Record<string, string> = {
-  Baixa: '#22c55e',
-  Media: '#f59e0b',
-  Alta: '#ef4444',
-  Critica: '#7f1d1d',
+  baixa: '#22c55e',
+  média: '#f59e0b',
+  alta: '#ef4444',
+  crítica: '#7f1d1d',
 }
 
 const RADIAN = Math.PI / 180
@@ -112,9 +112,10 @@ export default function TicketsChart({ summary }: TicketsChartProps) {
                 formatter={(value: number) => [value, 'Chamados']}
                 contentStyle={{ borderRadius: 10, fontSize: 13 }}
               />
+            
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {priorityData.map((entry) => (
-                  <Cell key={`cell-priority-${entry.name}`} fill={PRIORITY_COLORS[entry.value] ?? '#64748b'} />
+                  <Cell key={`cell-priority-${entry.name}`} fill={PRIORITY_COLORS[entry.name.toLowerCase()] ?? '#64748b'} />
                 ))}
               </Bar>
             </BarChart>
