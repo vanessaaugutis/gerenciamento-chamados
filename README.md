@@ -27,8 +27,18 @@ DB_NAME=gerenciamento_chamados
 A partir da pasta backend:
 
 ```bash
+cd backend
 npm install
 npm run start:dev
 ```
 
 > Se o PostgreSQL não estiver rodando ou as credenciais estiverem incorretas, o backend não conseguirá conectar.
+
+### 4. Rodar o frontend
+A partir da pasta frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
