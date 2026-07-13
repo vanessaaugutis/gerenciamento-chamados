@@ -72,8 +72,8 @@ function CategoriesPage() {
 
       await loadCategories()
       resetForm()
-    } catch {
-      setFormError('Falha ao salvar a categoria.')
+    } catch(error: any) {
+      setFormError(error?.message || 'Falha ao salvar a categoria.')
     } finally {
       setLoading(false)
     }
@@ -100,8 +100,8 @@ function CategoriesPage() {
       await loadCategories()
       if (editingId === pendingDeleteId) resetForm()
       addToast('Categoria excluída com sucesso.')
-    } catch {
-      addToast('Falha ao excluir a categoria.', 'error')
+    } catch (error: any){
+      addToast(error?.message || 'Falha ao excluir a categoria.', 'error')
     } finally {
       setPendingDeleteId(null)
     }

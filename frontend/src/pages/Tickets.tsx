@@ -143,8 +143,9 @@ function TicketsPage() {
         dueDate: dueDate || undefined,
       };
 
-      if (editingId) {
-        await updateTicket(editingId, payload);
+      const editedTicketId = editingId;
+      if (editedTicketId) {
+        await updateTicket(editedTicketId, payload);
         addToast('Chamado atualizado com sucesso.');
       } else {
         await createTicket(payload);
@@ -152,9 +153,21 @@ function TicketsPage() {
       }
 
       await loadData(page);
+
+      if (editedTicketId && expandedTicketId === editedTicketId) {
+        const details = await getTicketDetails(editedTicketId);
+        setTicketDetails((current) => ({
+          ...current,
+          [editedTicketId]: {
+            comments: details.comments ?? [],
+            histories: details.histories ?? [],
+          },
+        }));
+      }
+
       resetForm();
-    } catch {
-      setFormError('Falha ao salvar o chamado.');
+    } catch(error: any) {
+      setFormError(error.message || 'Falha ao salvar o chamado.');
     } finally {
       setLoading(false);
     }
@@ -186,8 +199,8 @@ function TicketsPage() {
       await loadData(page);
       if (editingId === pendingDeleteId) resetForm();
       addToast('Chamado excluído com sucesso.');
-    } catch {
-      addToast('Falha ao excluir o chamado.', 'error');
+    } catch (error: any) {
+      addToast(error?.message || 'Falha ao excluir o chamado.', 'error');
     } finally {
       setPendingDeleteId(null);
     }
@@ -242,8 +255,8 @@ function TicketsPage() {
       }));
       setCommentDrafts((current) => ({ ...current, [ticketId]: '' }));
       addToast('Comentário adicionado com sucesso.');
-    } catch {
-      addToast('Falha ao adicionar o comentário.', 'error');
+    } catch (error: any) {
+      addToast(error?.message || 'Falha ao adicionar o comentário.', 'error');
     } finally {
       setCommentLoading((current) => ({ ...current, [ticketId]: false }));
     }
