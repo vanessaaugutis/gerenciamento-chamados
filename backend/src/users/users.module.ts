@@ -14,7 +14,7 @@ import { UsersService } from './users.service';
     PassportModule,
     JwtModule.register({
       secret: jwtConstants.secret,
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: jwtConstants.accessTokenExpiresIn },
     }),
   ],
   controllers: [UsersController],

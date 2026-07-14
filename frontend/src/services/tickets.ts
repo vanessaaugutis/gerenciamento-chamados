@@ -1,6 +1,5 @@
-import { authHeaders } from './auth';
+import { API_URL, authenticatedFetch } from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Ticket = {
   id: number;
@@ -72,9 +71,7 @@ export async function listTickets(params: TicketListParams = {}): Promise<Ticket
     }
   });
 
-  const response = await fetch(`${API_URL}/tickets?${query.toString()}`, {
-    headers: authHeaders(),
-  });
+  const response = await authenticatedFetch(`${API_URL}/tickets?${query.toString()}`);
   if (!response.ok) {
     throw new Error('Erro ao listar chamados');
   }
@@ -82,9 +79,9 @@ export async function listTickets(params: TicketListParams = {}): Promise<Ticket
 }
 
 export async function createTicket(payload: Record<string, unknown>): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/tickets`, {
+  const response = await authenticatedFetch(`${API_URL}/tickets`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -96,9 +93,9 @@ export async function createTicket(payload: Record<string, unknown>): Promise<Ti
 }
 
 export async function updateTicket(id: number, payload: Record<string, unknown>): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/tickets/${id}`, {
+  const response = await authenticatedFetch(`${API_URL}/tickets/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -110,9 +107,8 @@ export async function updateTicket(id: number, payload: Record<string, unknown>)
 }
 
 export async function deleteTicket(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/tickets/${id}`, {
+  const response = await authenticatedFetch(`${API_URL}/tickets/${id}`, {
     method: 'DELETE',
-    headers: authHeaders(),
   });
 
   if (!response.ok) {
@@ -121,9 +117,7 @@ export async function deleteTicket(id: number): Promise<void> {
 }
 
 export async function getTicketDetails(id: number): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/tickets/${id}`, {
-    headers: authHeaders(),
-  });
+  const response = await authenticatedFetch(`${API_URL}/tickets/${id}`);
   if (!response.ok) {
     throw new Error('Erro ao buscar detalhes do chamado');
   }
@@ -131,9 +125,9 @@ export async function getTicketDetails(id: number): Promise<Ticket> {
 }
 
 export async function createComment(ticketId: number, payload: { text: string }): Promise<Comment> {
-  const response = await fetch(`${API_URL}/tickets/${ticketId}/comments`, {
+  const response = await authenticatedFetch(`${API_URL}/tickets/${ticketId}/comments`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 

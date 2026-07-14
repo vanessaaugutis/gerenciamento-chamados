@@ -68,7 +68,7 @@ function RegisterPage() {
 
         {error ? <Message text={error} type="error" /> : null}
 
-        <Button type="submit" variant="primary" style={{ width: '100%' }}>
+        <Button type="submit" variant="primary" className="btn--full">
           Registrar
         </Button>
       </form>

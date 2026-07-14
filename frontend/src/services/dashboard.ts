@@ -1,6 +1,5 @@
-import { authHeaders } from './auth';
+import { API_URL, authenticatedFetch } from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type DashboardSummary = {
   total: number;
@@ -17,9 +16,7 @@ export type DashboardSummary = {
 };
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await fetch(`${API_URL}/tickets/dashboard`, {
-    headers: authHeaders(),
-  });
+  const response = await authenticatedFetch(`${API_URL}/tickets/dashboard`);
 
   if (!response.ok) {
     throw new Error('Erro ao carregar o dashboard');

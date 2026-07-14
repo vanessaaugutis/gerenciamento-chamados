@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { User } from '../entities/UserEntity';
+import { jwtConstants } from './auth.constants';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 
@@ -36,9 +37,10 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async validateUser(
-    loginUserDto: LoginUserDto,
-  ): Promise<{ accessToken: string }> {
+  async validateUser(loginUserDto: LoginUserDto): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const user = await this.usersRepository.findOne({
       where: { email: loginUserDto.email },
     });
@@ -53,13 +55,62 @@ export class UsersService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Senha incorreta.');
+      throw new UnauthorizedException('Senha inválida.');
     }
 
+    return this.createTokenPair(user);
+  }
+
+  async refreshAccessToken(
+    refreshToken: string,
+  ): Promise<{ accessToken: string }> {
+    try {
+      const payload = this.jwtService.verify<{
+        sub: number;
+        email: string;
+        type: 'refresh';
+      }>(refreshToken, { secret: jwtConstants.refreshSecret });
+
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Refresh token inválido.');
+      }
+
+      const user = await this.usersRepository.findOne({
+        where: { id: payload.sub, email: payload.email },
+      });
+      if (!user) {
+        throw new UnauthorizedException('Refresh token inválido.');
+      }
+
+      return { accessToken: this.createAccessToken(user) };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('Refresh token inválido ou expirado.');
+    }
+  }
+
+  private createTokenPair(user: User): {
+    accessToken: string;
+    refreshToken: string;
+  } {
     const payload = { sub: user.id, email: user.email };
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken: this.createAccessToken(user),
+      refreshToken: this.jwtService.sign(
+        { ...payload, type: 'refresh' },
+        {
+          secret: jwtConstants.refreshSecret,
+          expiresIn: jwtConstants.refreshTokenExpiresIn,
+        },
+      ),
     };
+  }
+
+  private createAccessToken(user: User): string {
+    return this.jwtService.sign(
+      { sub: user.id, email: user.email },
+      { expiresIn: jwtConstants.accessTokenExpiresIn },
+    );
   }
 
   async findAll(): Promise<Pick<User, 'id' | 'name' | 'email'>[]> {

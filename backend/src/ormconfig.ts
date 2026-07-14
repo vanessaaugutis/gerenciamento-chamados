@@ -15,5 +15,5 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   database: process.env.DB_NAME || 'gerenciamento_chamados',
   entities: [User, Category, Ticket, Comment, History],
   synchronize: false,
-  logging: true,
+  logging: process.env.NODE_ENV !== 'production',
 };

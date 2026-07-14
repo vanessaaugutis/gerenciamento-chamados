@@ -16,5 +16,5 @@ export const AppDataSource = new DataSource({
   entities: [User, Category, Ticket, Comment, History],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
-  logging: true,
+  logging: process.env.NODE_ENV !== 'production',
 });

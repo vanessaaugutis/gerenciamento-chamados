@@ -1,6 +1,5 @@
-import { authHeaders } from './auth';
+import { API_URL, authenticatedFetch } from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Category = {
   id: number;
@@ -9,9 +8,7 @@ export type Category = {
 };
 
 export async function listCategories(): Promise<Category[]> {
-  const response = await fetch(`${API_URL}/categories`, {
-    headers: authHeaders(),
-  });
+  const response = await authenticatedFetch(`${API_URL}/categories`);
   if (!response.ok) {
     throw new Error('Erro ao listar categorias');
   }
@@ -19,9 +16,9 @@ export async function listCategories(): Promise<Category[]> {
 }
 
 export async function createCategory(payload: { name: string; description?: string }): Promise<Category> {
-  const response = await fetch(`${API_URL}/categories`, {
+  const response = await authenticatedFetch(`${API_URL}/categories`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -33,9 +30,9 @@ export async function createCategory(payload: { name: string; description?: stri
 }
 
 export async function updateCategory(id: number, payload: { name?: string; description?: string }): Promise<Category> {
-  const response = await fetch(`${API_URL}/categories/${id}`, {
+  const response = await authenticatedFetch(`${API_URL}/categories/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -47,9 +44,8 @@ export async function updateCategory(id: number, payload: { name?: string; descr
 }
 
 export async function deleteCategory(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/categories/${id}`, {
+  const response = await authenticatedFetch(`${API_URL}/categories/${id}`, {
     method: 'DELETE',
-    headers: authHeaders(),
   });
 
   if (!response.ok) {

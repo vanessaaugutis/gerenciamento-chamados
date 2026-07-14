@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
 import DashboardPage from './pages/Dashboard'
 import CategoriesPage from './pages/Categories'
 import TicketsPage from './pages/Tickets'
-import { clearToken, getToken } from './services/auth'
+import { clearToken, getToken, logoutUser } from './services/auth'
 
 function App() {
   const location = useLocation()
@@ -15,11 +15,20 @@ function App() {
   const hideNav = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register'
   const isAuthenticated = Boolean(getToken())
 
-  const handleLogout = () => {
-    clearToken()
+  const handleLogout = async () => {
+    await logoutUser()
     setSidebarOpen(false)
     navigate('/login', { state: { logoutMessage: 'Usuário deslogado com sucesso!' } })
   }
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      clearToken()
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('auth:expired', handleExpiredSession)
+    return () => window.removeEventListener('auth:expired', handleExpiredSession)
+  }, [navigate])
 
   const closeSidebar = () => setSidebarOpen(false)
 

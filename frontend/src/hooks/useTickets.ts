@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
-  createComment,
   createTicket,
   deleteTicket,
-  getTicketDetails,
   listTickets,
   updateTicket,
-  type Comment,
-  type HistoryItem,
   type Ticket,
+  type TicketListParams,
 } from '../services/tickets';
 import { listCategories, type Category } from '../services/categories';
 import { listUsers, type UserSummary } from '../services/users';
 import { getUserId } from '../services/auth';
 import { useToast } from './useToast';
+import { useTicketDetails } from './useTicketDetails';
+import { useTicketFilters } from './useTicketFilters';
 
 export interface TicketFormState {
   subject: string;
@@ -49,26 +48,43 @@ export function useTickets() {
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [listLoading, setListLoading] = useState(false);
 
-  const [filterSubject, setFilterSubject] = useState('');
-  const [filterRequester, setFilterRequester] = useState('');
-  const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [filterPriority, setFilterPriority] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const {
+    filterSubject,
+    setFilterSubject,
+    filterRequester,
+    setFilterRequester,
+    filterCategoryId,
+    setFilterCategoryId,
+    filterPriority,
+    setFilterPriority,
+    filterStatus,
+    setFilterStatus,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+    filtersOpen,
+    setFiltersOpen,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    resetFilters,
+  } = useTicketFilters();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
-  const [ticketDetails, setTicketDetails] = useState<
-    Record<number, { comments: Comment[]; histories: HistoryItem[] }>
-  >({});
-  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
-  const [commentLoading, setCommentLoading] = useState<Record<number, boolean>>({});
+  const {
+    expandedTicketId,
+    ticketDetails,
+    commentDrafts,
+    setCommentDrafts,
+    commentLoading,
+    refreshDetails,
+    handleToggleDetails,
+    handleAddComment,
+  } = useTicketDetails(addToast);
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
@@ -85,20 +101,23 @@ export function useTickets() {
     setShowTicketModal(false);
   };
 
-  const loadData = async (nextPage = 1) => {
+  const loadData = async (
+    nextPage = 1,
+    overrides: Partial<TicketListParams> = {},
+  ) => {
     setListLoading(true);
     try {
       const [ticketsResponse, categoriesResponse, usersResponse] = await Promise.all([
         listTickets({
-          subject: filterSubject,
-          requester: filterRequester,
-          categoryId: filterCategoryId,
-          priority: filterPriority,
-          status: filterStatus,
-          sortBy,
-          order: sortOrder,
+          subject: overrides.subject ?? filterSubject,
+          requester: overrides.requester ?? filterRequester,
+          categoryId: overrides.categoryId ?? filterCategoryId,
+          priority: overrides.priority ?? filterPriority,
+          status: overrides.status ?? filterStatus,
+          sortBy: overrides.sortBy ?? sortBy,
+          order: overrides.order ?? sortOrder,
           page: nextPage,
-          limit: pageSize,
+          limit: overrides.limit ?? pageSize,
         }),
         listCategories(),
         listUsers(),
@@ -154,14 +173,7 @@ export function useTickets() {
       await loadData(page);
 
       if (editedTicketId && expandedTicketId === editedTicketId) {
-        const details = await getTicketDetails(editedTicketId);
-        setTicketDetails((current) => ({
-          ...current,
-          [editedTicketId]: {
-            comments: details.comments ?? [],
-            histories: details.histories ?? [],
-          },
-        }));
+        await refreshDetails(editedTicketId);
       }
 
       resetForm();
@@ -211,63 +223,18 @@ export function useTickets() {
     setPendingDeleteId(null);
   };
 
-  const handleToggleDetails = async (ticketId: number) => {
-    if (expandedTicketId === ticketId) {
-      setExpandedTicketId(null);
-      return;
-    }
-    setExpandedTicketId(ticketId);
-    if (ticketDetails[ticketId]) return;
-    try {
-      const details = await getTicketDetails(ticketId);
-      setTicketDetails((current) => ({
-        ...current,
-        [ticketId]: {
-          comments: details.comments ?? [],
-          histories: details.histories ?? [],
-        },
-      }));
-    } catch {
-      addToast('Não foi possível carregar os detalhes do chamado.', 'error');
-    }
-  };
-
-  const handleAddComment = async (ticketId: number) => {
-    const text = commentDrafts[ticketId]?.trim();
-    if (!text) {
-      addToast('Escreva um comentário antes de salvar.', 'info');
-      return;
-    }
-    setCommentLoading((current) => ({ ...current, [ticketId]: true }));
-    try {
-      await createComment(ticketId, { text });
-      const details = await getTicketDetails(ticketId);
-      setTicketDetails((current) => ({
-        ...current,
-        [ticketId]: {
-          comments: details.comments ?? [],
-          histories: details.histories ?? [],
-        },
-      }));
-      setCommentDrafts((current) => ({ ...current, [ticketId]: '' }));
-      addToast('Comentário adicionado com sucesso.');
-    } catch (error: any) {
-      addToast(error?.message || 'Falha ao adicionar o comentário.', 'error');
-    } finally {
-      setCommentLoading((current) => ({ ...current, [ticketId]: false }));
-    }
-  };
-
   const clearFilters = () => {
-    setFilterSubject('');
-    setFilterRequester('');
-    setFilterCategoryId('');
-    setFilterPriority('');
-    setFilterStatus('');
-    setSortBy('createdAt');
-    setSortOrder('DESC');
-    setPageSize(5);
-    setTimeout(() => void loadData(1), 0);
+    resetFilters();
+    void loadData(1, {
+      subject: '',
+      requester: '',
+      categoryId: '',
+      priority: '',
+      status: '',
+      sortBy: 'createdAt',
+      order: 'DESC',
+      limit: 5,
+    });
   };
 
   const formatDate = (date: string) => {

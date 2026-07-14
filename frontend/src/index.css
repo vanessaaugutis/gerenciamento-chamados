@@ -46,6 +46,10 @@ body {
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
 }
 
+.page-card--wide {
+  width: min(100%, 1100px);
+}
+
 .page-card h1 {
   margin-top: 0;
   margin-bottom: 8px;
@@ -922,6 +926,22 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.form-message {
+  margin: 4px 0 0;
+}
+
+.form-message--info {
+  color: #2563eb;
+}
+
+.form-message--error {
+  color: #ef4444;
 }
 
 /* Ticket subject row — flex, vertically centred, wraps, small bottom margin */

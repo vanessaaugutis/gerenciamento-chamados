@@ -146,7 +146,7 @@ function CategoriesPage() {
 
             <Message text={formError} type="error" />
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <div className="form-actions">
               <Button type="submit" variant="primary" disabled={loading}>
                 {loading ? 'Salvando...' : editingId ? 'Atualizar categoria' : 'Cadastrar categoria'}
               </Button>
@@ -164,17 +164,14 @@ function CategoriesPage() {
             <li>Nenhuma categoria cadastrada ainda.</li>
           ) : (
             categories.map((category) => (
-              <li
-                key={category.id}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}
-              >
+              <li key={category.id} className="list-item-row">
                 <div>
                   <strong>{category.name}</strong>
                   {category.description ? (
-                    <div style={{ color: '#64748b' }}>{category.description}</div>
+                    <div className="list-item-secondary">{category.description}</div>
                   ) : null}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="list-item-actions">
                   <Button variant="warning" size="sm" onClick={() => handleEdit(category)}>
                     Editar
                   </Button>

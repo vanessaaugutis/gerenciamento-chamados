@@ -1,4 +1,3 @@
-import React from 'react';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -130,14 +129,14 @@ function TicketsPage() {
             <Message text={formError} type="error" />
 
             <div className="form-actions">
-              <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? 'Salvando...' : editingId ? 'Atualizar chamado' : 'Cadastrar chamado'}
-              </Button>
               {editingId ? (
                 <Button type="button" variant="cancel" onClick={resetForm}>
                   Cancelar edição
                 </Button>
               ) : null}
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? 'Salvando...' : editingId ? 'Atualizar chamado' : 'Cadastrar chamado'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -255,7 +254,6 @@ function TicketsPage() {
           ) : (
             tickets.map((ticket) => (
               <li key={ticket.id} className="ticket-item">
-                {/* Header: info + action buttons */}
                 <div className="ticket-item__header">
                   <div className="ticket-item__info">
                     <div className="ticket-subject-row">
@@ -310,7 +308,6 @@ function TicketsPage() {
 
                   {expandedTicketId === ticket.id && (
                     <div className="ticket-item__expanded">
-                      {/* Comment form */}
                       <div className="comment-form">
                         <FormField label="Comentário">
                           <textarea

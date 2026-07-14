@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type AuthResponse = {
   accessToken: string;
@@ -32,6 +32,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -51,6 +52,29 @@ export async function registerUser(name: string, email: string, password: string
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));
   }
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/users/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const data = (await response.json()) as AuthResponse;
+        saveToken(data.accessToken);
+        return data.accessToken;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
 }
 
 export function saveToken(token: string) {
@@ -78,10 +102,35 @@ export function clearToken() {
   localStorage.removeItem('authUserId');
 }
 
-/** Returns headers with Authorization Bearer token included. */
-export function authHeaders(): Record<string, string> {
-  const token = getToken();
-  return token
-    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-    : { 'Content-Type': 'application/json' };
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch(`${API_URL}/users/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } finally {
+    clearToken();
+  }
+}
+
+/** Fetch autenticado que renova o access token uma vez após receber 401. */
+export async function authenticatedFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const request = (token: string | null) => {
+    const headers = new Headers(init.headers);
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    return fetch(input, { ...init, headers, credentials: 'include' });
+  };
+
+  const response = await request(getToken());
+  if (response.status !== 401) return response;
+
+  const accessToken = await refreshAccessToken();
+  if (accessToken) return request(accessToken);
+
+  clearToken();
+  window.dispatchEvent(new Event('auth:expired'));
+  return response;
 }
