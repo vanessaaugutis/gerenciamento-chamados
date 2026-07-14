@@ -34,6 +34,7 @@ body {
   flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
   padding: 24px;
 }
 
@@ -913,3 +914,96 @@ body {
 }
 
 .toast__close:hover { opacity: 1; }
+
+/* ─── Utility classes (replacing inline styles) ─────────────── */
+
+/* Form action row — flex row with gap, used below form submit buttons */
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Ticket subject row — flex, vertically centred, wraps, small bottom margin */
+.ticket-subject-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+/* Ticket subject text */
+.ticket-subject {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Ticket description text */
+.ticket-description {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+/* Results count line above the ticket list */
+.results-count {
+  margin-top: 12px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+/* Comment/history section heading */
+.detail-heading {
+  margin: 0 0 8px;
+}
+
+/* Empty state paragraph inside detail sections */
+.detail-empty {
+  color: #64748b;
+  margin: 0;
+}
+
+/* Text inside a comment or history entry */
+.detail-text {
+  color: #334155;
+  word-break: break-word;
+}
+
+/* Comment textarea — keeps resize + min-height without inline style */
+.comment-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Save-comment button — aligns itself to the start of the flex column */
+.comment-submit {
+  align-self: flex-start;
+}
+
+/* Comment form wrapper — reuses auth-form layout but with tighter gap */
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* List item row — space-between layout used in category & similar lists */
+.list-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Secondary text inside a list item (e.g. category description) */
+.list-item-secondary {
+  color: #64748b;
+}
+
+/* Action button group inside a list item */
+.list-item-actions {
+  display: flex;
+  gap: 8px;
+}

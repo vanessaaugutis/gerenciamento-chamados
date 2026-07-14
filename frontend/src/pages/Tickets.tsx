@@ -1,18 +1,4 @@
-import { useEffect, useState } from 'react';
-import {
-  createComment,
-  createTicket,
-  deleteTicket,
-  getTicketDetails,
-  listTickets,
-  updateTicket,
-  type Comment,
-  type HistoryItem,
-  type Ticket,
-} from '../services/tickets';
-import { listCategories, type Category } from '../services/categories';
-import { listUsers, type UserSummary } from '../services/users';
-import { getUserId } from '../services/auth';
+import React from 'react';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -22,7 +8,7 @@ import Message from '../components/Message';
 import PageCard from '../components/PageCard';
 import ConfirmModal from '../components/ConfirmModal';
 import ToastContainer from '../components/ToastContainer';
-import { useToast } from '../hooks/useToast';
+import { useTickets } from '../hooks/useTickets';
 
 const priorities = ['Baixa', 'Média', 'Alta', 'Crítica'];
 const statuses = ['Aberto', 'Em Atendimento', 'Aguardando Usuário', 'Finalizado'];
@@ -37,230 +23,31 @@ const sortOptions = [
 ];
 
 function TicketsPage() {
-  const { toasts, addToast, removeToast } = useToast();
-
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [priority, setPriority] = useState('Média');
-  const [status, setStatus] = useState('Aberto');
-  const [responsibleId, setResponsibleId] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formError, setFormError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [users, setUsers] = useState<UserSummary[]>([]);
-  const [listLoading, setListLoading] = useState(false);
-  const [filterSubject, setFilterSubject] = useState('');
-  const [filterRequester, setFilterRequester] = useState('');
-  const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [filterPriority, setFilterPriority] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
-  const [ticketDetails, setTicketDetails] = useState<Record<number, { comments: Comment[]; histories: HistoryItem[] }>>({});
-  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
-  const [commentLoading, setCommentLoading] = useState<Record<number, boolean>>({});
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(true);
-
-  const loadData = async (nextPage = 1) => {
-    setListLoading(true);
-    try {
-      const [ticketsResponse, categoriesResponse, usersResponse] = await Promise.all([
-        listTickets({
-          subject: filterSubject,
-          requester: filterRequester,
-          categoryId: filterCategoryId,
-          priority: filterPriority,
-          status: filterStatus,
-          sortBy,
-          order: sortOrder,
-          page: nextPage,
-          limit: pageSize,
-        }),
-        listCategories(),
-        listUsers(),
-      ]);
-      setTickets(ticketsResponse.items);
-      setCategories(categoriesResponse);
-      setUsers(usersResponse);
-      setPage(ticketsResponse.page);
-      setTotalPages(ticketsResponse.totalPages);
-      setTotalItems(ticketsResponse.total);
-    } catch {
-      addToast('Não foi possível carregar os dados.', 'error');
-    } finally {
-      setListLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadData(1);
-  }, []);
-
-  const resetForm = () => {
-    setSubject('');
-    setDescription('');
-    setCategoryId('');
-    setPriority('Média');
-    setStatus('Aberto');
-    setResponsibleId('');
-    setDueDate('');
-    setEditingId(null);
-    setFormError('');
-    setShowTicketModal(false);
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!subject.trim() || !description.trim()) {
-      setFormError('Informe assunto e descrição do chamado.');
-      return;
-    }
-
-    setLoading(true);
-    setFormError('');
-
-    try {
-      const payload = {
-        subject: subject.trim(),
-        description: description.trim(),
-        categoryId: categoryId ? Number(categoryId) : undefined,
-        priority,
-        status,
-        responsibleId: responsibleId ? Number(responsibleId) : undefined,
-        requesterId: getUserId() ?? undefined,
-        dueDate: dueDate || undefined,
-      };
-
-      const editedTicketId = editingId;
-      if (editedTicketId) {
-        await updateTicket(editedTicketId, payload);
-        addToast('Chamado atualizado com sucesso.');
-      } else {
-        await createTicket(payload);
-        addToast('Chamado criado com sucesso.');
-      }
-
-      await loadData(page);
-
-      if (editedTicketId && expandedTicketId === editedTicketId) {
-        const details = await getTicketDetails(editedTicketId);
-        setTicketDetails((current) => ({
-          ...current,
-          [editedTicketId]: {
-            comments: details.comments ?? [],
-            histories: details.histories ?? [],
-          },
-        }));
-      }
-
-      resetForm();
-    } catch(error: any) {
-      setFormError(error.message || 'Falha ao salvar o chamado.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (ticket: Ticket) => {
-    setEditingId(ticket.id);
-    setSubject(ticket.subject);
-    setDescription(ticket.description);
-    setCategoryId(ticket.category?.id?.toString() ?? '');
-    setPriority(ticket.priority);
-    setStatus(ticket.status);
-    setResponsibleId(ticket.responsible?.id?.toString() ?? '');
-    setDueDate(ticket.dueDate ? ticket.dueDate.slice(0, 10) : '');
-    setShowTicketModal(true);
-  };
-
-  const handleDeleteRequest = (id: number) => {
-    setPendingDeleteId(id);
-    setConfirmVisible(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (pendingDeleteId === null) return;
-    setConfirmVisible(false);
-
-    try {
-      await deleteTicket(pendingDeleteId);
-      await loadData(page);
-      if (editingId === pendingDeleteId) resetForm();
-      addToast('Chamado excluído com sucesso.');
-    } catch (error: any) {
-      addToast(error?.message || 'Falha ao excluir o chamado.', 'error');
-    } finally {
-      setPendingDeleteId(null);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setConfirmVisible(false);
-    setPendingDeleteId(null);
-  };
-
-  const handleToggleDetails = async (ticketId: number) => {
-    if (expandedTicketId === ticketId) {
-      setExpandedTicketId(null);
-      return;
-    }
-
-    setExpandedTicketId(ticketId);
-    if (ticketDetails[ticketId]) return;
-
-    try {
-      const details = await getTicketDetails(ticketId);
-      setTicketDetails((current) => ({
-        ...current,
-        [ticketId]: {
-          comments: details.comments ?? [],
-          histories: details.histories ?? [],
-        },
-      }));
-    } catch {
-      addToast('Não foi possível carregar os detalhes do chamado.', 'error');
-    }
-  };
-
-  const handleAddComment = async (ticketId: number) => {
-    const text = commentDrafts[ticketId]?.trim();
-    if (!text) {
-      addToast('Escreva um comentário antes de salvar.', 'info');
-      return;
-    }
-
-    setCommentLoading((current) => ({ ...current, [ticketId]: true }));
-
-    try {
-      await createComment(ticketId, { text, userId: 1 });
-      const details = await getTicketDetails(ticketId);
-      setTicketDetails((current) => ({
-        ...current,
-        [ticketId]: {
-          comments: details.comments ?? [],
-          histories: details.histories ?? [],
-        },
-      }));
-      setCommentDrafts((current) => ({ ...current, [ticketId]: '' }));
-      addToast('Comentário adicionado com sucesso.');
-    } catch (error: any) {
-      addToast(error?.message || 'Falha ao adicionar o comentário.', 'error');
-    } finally {
-      setCommentLoading((current) => ({ ...current, [ticketId]: false }));
-    }
-  };
+  const {
+    toasts, removeToast,
+    form, setFormField,
+    editingId, formError, loading,
+    showTicketModal, setShowTicketModal,
+    resetForm, handleSubmit, handleEdit,
+    tickets, categories, users, listLoading, loadData,
+    filterSubject,    setFilterSubject,
+    filterRequester,  setFilterRequester,
+    filterCategoryId, setFilterCategoryId,
+    filterPriority,   setFilterPriority,
+    filterStatus,     setFilterStatus,
+    sortBy,           setSortBy,
+    sortOrder,        setSortOrder,
+    filtersOpen,      setFiltersOpen,
+    clearFilters,
+    page, pageSize, setPageSize, totalPages, totalItems,
+    expandedTicketId, ticketDetails,
+    commentDrafts, setCommentDrafts,
+    commentLoading,
+    handleToggleDetails, handleAddComment,
+    confirmVisible,
+    handleDeleteRequest, handleDeleteConfirm, handleDeleteCancel,
+    formatDate,
+  } = useTickets();
 
   return (
     <>
@@ -280,22 +67,22 @@ function TicketsPage() {
           <form onSubmit={handleSubmit} className="auth-form">
             <FormField label="Assunto" required>
               <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                value={form.subject}
+                onChange={(e) => setFormField('subject', e.target.value)}
                 placeholder="Ex.: Erro no login"
               />
             </FormField>
 
             <FormField label="Descrição" required>
               <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                value={form.description}
+                onChange={(e) => setFormField('description', e.target.value)}
                 placeholder="Descreva o problema"
               />
             </FormField>
 
             <FormField label="Categoria">
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Select value={form.categoryId} onChange={(e) => setFormField('categoryId', e.target.value)}>
                 <option value="">Selecione uma categoria</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -306,7 +93,7 @@ function TicketsPage() {
             </FormField>
 
             <FormField label="Prioridade">
-              <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+              <Select value={form.priority} onChange={(e) => setFormField('priority', e.target.value)}>
                 {priorities.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
@@ -314,7 +101,7 @@ function TicketsPage() {
             </FormField>
 
             <FormField label="Status">
-              <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <Select value={form.status} onChange={(e) => setFormField('status', e.target.value)}>
                 {statuses.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
@@ -322,7 +109,7 @@ function TicketsPage() {
             </FormField>
 
             <FormField label="Responsável">
-              <Select value={responsibleId} onChange={(e) => setResponsibleId(e.target.value)}>
+              <Select value={form.responsibleId} onChange={(e) => setFormField('responsibleId', e.target.value)}>
                 <option value="">Sem responsável</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
@@ -335,14 +122,14 @@ function TicketsPage() {
             <FormField label="Prazo de atendimento">
               <Input
                 type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                value={form.dueDate}
+                onChange={(e) => setFormField('dueDate', e.target.value)}
               />
             </FormField>
 
             <Message text={formError} type="error" />
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <div className="form-actions">
               <Button type="submit" variant="primary" disabled={loading}>
                 {loading ? 'Salvando...' : editingId ? 'Atualizar chamado' : 'Cadastrar chamado'}
               </Button>
@@ -355,7 +142,6 @@ function TicketsPage() {
           </form>
         </Modal>
 
-        {/* Filtros */}
         <div className={`filters-section${filtersOpen ? ' filters-section--open' : ''}`}>
           <button
             type="button"
@@ -451,20 +237,7 @@ function TicketsPage() {
                 <Button variant="primary" onClick={() => void loadData(1)} disabled={listLoading}>
                   {listLoading ? 'Carregando...' : 'Aplicar filtros'}
                 </Button>
-                <Button
-                  variant="cancel"
-                  onClick={() => {
-                    setFilterSubject('');
-                    setFilterRequester('');
-                    setFilterCategoryId('');
-                    setFilterPriority('');
-                    setFilterStatus('');
-                    setSortBy('createdAt');
-                    setSortOrder('DESC');
-                    setPageSize(5);
-                    setTimeout(() => void loadData(1), 0);
-                  }}
-                >
+                <Button variant="cancel" onClick={clearFilters}>
                   Limpar filtros
                 </Button>
               </div>
@@ -472,9 +245,9 @@ function TicketsPage() {
           )}
         </div>
 
-        <div style={{ marginTop: 12, color: '#475569', fontSize: '0.9rem' }}>
+        <p className="results-count">
           Exibindo {tickets.length} de {totalItems} chamado(s) • Página {page} de {totalPages}
-        </div>
+        </p>
 
         <ul className="list-card">
           {tickets.length === 0 ? (
@@ -482,16 +255,16 @@ function TicketsPage() {
           ) : (
             tickets.map((ticket) => (
               <li key={ticket.id} className="ticket-item">
-                {/* Cabeçalho: info + botões */}
+                {/* Header: info + action buttons */}
                 <div className="ticket-item__header">
                   <div className="ticket-item__info">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <div className="ticket-subject-row">
                       {ticket.priority === 'Crítica' && (
                         <span className="ticket-critical-badge">⚠ CRÍTICO</span>
                       )}
-                      <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{ticket.subject}</strong>
+                      <strong className="ticket-subject">{ticket.subject}</strong>
                     </div>
-                    <div style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 8 }}>{ticket.description}</div>
+                    <p className="ticket-description">{ticket.description}</p>
                     <div className="ticket-meta">
                       {ticket.category?.name && (
                         <span className="ticket-badge ticket-badge--category">
@@ -511,7 +284,7 @@ function TicketsPage() {
                       )}
                       {ticket.dueDate && (
                         <span className="ticket-badge ticket-badge--due">
-                          📅 {new Date(ticket.dueDate).toLocaleDateString('pt-BR')}
+                          📅 {formatDate(ticket.dueDate)}
                         </span>
                       )}
                     </div>
@@ -526,7 +299,6 @@ function TicketsPage() {
                   </div>
                 </div>
 
-                {/* Detalhes expansíveis */}
                 <div className="ticket-item__details-row">
                   <Button
                     variant="teal"
@@ -536,42 +308,44 @@ function TicketsPage() {
                     {expandedTicketId === ticket.id ? 'Ocultar detalhes' : 'Ver comentários e histórico'}
                   </Button>
 
-                  {expandedTicketId === ticket.id ? (
+                  {expandedTicketId === ticket.id && (
                     <div className="ticket-item__expanded">
-                      <div className="auth-form" style={{ gap: 8 }}>
+                      {/* Comment form */}
+                      <div className="comment-form">
                         <FormField label="Comentário">
                           <textarea
-                            className="form-input"
+                            className="form-input comment-textarea"
                             value={commentDrafts[ticket.id] ?? ''}
                             onChange={(e) =>
                               setCommentDrafts((current) => ({ ...current, [ticket.id]: e.target.value }))
                             }
                             rows={3}
                             placeholder="Adicione um comentário"
-                            style={{ resize: 'vertical', minHeight: 80 }}
                           />
                         </FormField>
                         <Button
                           variant="primary"
+                          className="comment-submit"
                           onClick={() => void handleAddComment(ticket.id)}
                           disabled={commentLoading[ticket.id]}
-                          style={{ alignSelf: 'flex-start' }}
                         >
                           {commentLoading[ticket.id] ? 'Salvando...' : 'Salvar comentário'}
                         </Button>
                       </div>
 
                       <div>
-                        <h4 style={{ margin: '0 0 8px' }}>Comentários</h4>
+                        <h4 className="detail-heading">Comentários</h4>
                         {(ticketDetails[ticket.id]?.comments ?? []).length === 0 ? (
-                          <p style={{ color: '#64748b', margin: 0 }}>Nenhum comentário ainda.</p>
+                          <p className="detail-empty">Nenhum comentário ainda.</p>
                         ) : (
                           <ul className="detail-list">
                             {(ticketDetails[ticket.id]?.comments ?? []).map((comment) => (
                               <li key={comment.id}>
                                 <strong>{comment.user?.name ?? 'Usuário'}</strong> •{' '}
-                                {comment.createdAt ? new Date(comment.createdAt).toLocaleString('pt-BR') : '-'}
-                                <div style={{ color: '#334155', wordBreak: 'break-word' }}>{comment.text}</div>
+                                {comment.createdAt
+                                  ? new Date(comment.createdAt).toLocaleString('pt-BR')
+                                  : '-'}
+                                <div className="detail-text">{comment.text}</div>
                               </li>
                             ))}
                           </ul>
@@ -579,23 +353,25 @@ function TicketsPage() {
                       </div>
 
                       <div>
-                        <h4 style={{ margin: '0 0 8px' }}>Histórico</h4>
+                        <h4 className="detail-heading">Histórico</h4>
                         {(ticketDetails[ticket.id]?.histories ?? []).length === 0 ? (
-                          <p style={{ color: '#64748b', margin: 0 }}>Nenhuma alteração registrada.</p>
+                          <p className="detail-empty">Nenhuma alteração registrada.</p>
                         ) : (
                           <ul className="detail-list">
                             {(ticketDetails[ticket.id]?.histories ?? []).map((history) => (
                               <li key={history.id}>
                                 <strong>{history.user?.name ?? 'Usuário'}</strong> •{' '}
-                                {history.createdAt ? new Date(history.createdAt).toLocaleDateString('pt-BR') : '-'}
-                                <div style={{ color: '#334155', wordBreak: 'break-word' }}>{history.change}</div>
+                                {history.createdAt
+                                  ? new Date(history.createdAt).toLocaleString('pt-BR')
+                                  : '-'}
+                                <div className="detail-text">{history.change}</div>
                               </li>
                             ))}
                           </ul>
                         )}
                       </div>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </li>
             ))

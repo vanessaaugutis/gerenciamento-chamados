@@ -333,13 +333,20 @@ export class TicketsService {
     const requesterId = data.requesterId;
     const responsibleId = data.responsibleId;
 
+    const dueDate = data.dueDate
+      ? (() => {
+          const [year, month, day] = data.dueDate.split('-').map(Number);
+          return new Date(year, month - 1, day);
+        })()
+      : undefined;
+
     const ticket = this.ticketRepository.create({
       ...data,
       subject: data.subject?.trim(),
       description: data.description?.trim(),
       priority: this.normalizePriority(data.priority),
       status: this.normalizeStatus(data.status),
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      dueDate,
     }) as unknown as Ticket;
 
     if (existingId) {

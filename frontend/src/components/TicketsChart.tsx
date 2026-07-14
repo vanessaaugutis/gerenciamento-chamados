@@ -89,7 +89,7 @@ export default function TicketsChart({ summary }: TicketsChartProps) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, name: string) => [value, name]}
+                formatter={(value, name) => [value, name]}
                 contentStyle={{ borderRadius: 10, fontSize: 13 }}
               />
               <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 13 }} />
@@ -109,7 +109,7 @@ export default function TicketsChart({ summary }: TicketsChartProps) {
               <XAxis dataKey="name" tick={{ fontSize: 13 }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 13 }} />
               <Tooltip
-                formatter={(value: number) => [value, 'Chamados']}
+                formatter={(value) => [value, 'Chamados']}
                 contentStyle={{ borderRadius: 10, fontSize: 13 }}
               />
             

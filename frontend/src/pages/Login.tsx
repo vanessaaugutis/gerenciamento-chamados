@@ -48,49 +48,49 @@ function LoginPage() {
   return (
     <>
       <PageCard>
-      <h1>LOGIN</h1>
-      <p>Entre com seu e-mail e senha para acessar o sistema.</p>
+        <h1>LOGIN</h1>
+        <p>Entre com seu e-mail e senha para acessar o sistema.</p>
 
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <FormField label="E-mail">
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu@email.com"
-          />
-        </FormField>
-
-        <FormField label="Senha">
-          <div className="password-input-wrapper">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <FormField label="E-mail">
             <Input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="********"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
             />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-            >
-              {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-            </button>
-          </div>
-        </FormField>
+          </FormField>
 
-        {error ? <Message text={error} type="error" /> : null}
+          <FormField label="Senha">
+            <div className="password-input-wrapper">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
+          </FormField>
 
-        <Button type="submit" variant="primary" style={{ width: '100%' }}>
-          Entrar
-        </Button>
-      </form>
+          {error ? <Message text={error} type="error" /> : null}
 
-      <p className="page-link">
-        Ainda não tem conta? <Link to="/register">Criar conta</Link>
-      </p>
-    </PageCard>
+          <Button type="submit" variant="primary" style={{ width: '100%' }}>
+            Entrar
+          </Button>
+        </form>
+
+        <p className="page-link">
+          Ainda não tem conta? <Link to="/register">Criar conta</Link>
+        </p>
+      </PageCard>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
