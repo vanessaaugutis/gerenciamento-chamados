@@ -164,6 +164,11 @@ export class TicketsService {
           user: true,
         },
       },
+      order: {
+        histories: {
+          createdAt: 'DESC',
+        },
+      },
     });
 
     if (!ticket) {
@@ -445,6 +450,24 @@ export class TicketsService {
       changes.push(`Status alterado: ${previous.status} → ${nextStatus}`);
     }
 
+    const previousDueDate = previous.dueDate
+      ? new Date(previous.dueDate).toISOString().slice(0, 10)
+      : null;
+
+    const nextDueDate = data.dueDate ?? null;
+
+    if (previousDueDate !== nextDueDate) {
+      const formatDate = (date: string | null | undefined) => {
+        if (!date) return '-';
+
+        const [year, month, day] = date.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+      };
+      changes.push(
+        `Prazo alterado: ${formatDate(previousDueDate)} → ${formatDate(nextDueDate)}`,
+      );
+    }
+
     const nextCategoryId = data.categoryId;
     if (nextCategoryId && previous.category?.id !== Number(nextCategoryId)) {
       const category = await this.categoryRepository.findOne({
@@ -474,6 +497,16 @@ export class TicketsService {
       previous.subject !== data.subject.trim()
     ) {
       changes.push('Assunto alterado');
+    }
+
+    if (
+      data.description &&
+      data.description.trim() &&
+      previous.description !== data.description.trim()
+    ) {
+      changes.push(
+        `Descrição alterada: ${previous.description} -> ${data.description}`,
+      );
     }
 
     return changes.length ? changes.join(' | ') : null;

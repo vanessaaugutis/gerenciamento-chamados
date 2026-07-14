@@ -285,6 +285,11 @@ function TicketsPage() {
                           📅 {formatDate(ticket.dueDate)}
                         </span>
                       )}
+                       {ticket.requester && (
+                        <span className="ticket-badge ticket-badge--category">
+                          Aberto por {ticket.requester.name} em {formatDate(ticket.dueDate)}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="ticket-item__actions">
